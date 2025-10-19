@@ -112,6 +112,41 @@ docker compose up -d --build
 
 For a production deployment, you can also remove or comment out the `mock_api` service from the `docker-compose.yml` file as it will no longer be needed.
 
+## Kubernetes Deployment
+
+This project includes a Kubernetes manifest for deploying the `easyvista_tool` service to a single-node k3s cluster.
+
+### Prerequisites
+
+- A running Kubernetes cluster (e.g., k3s, Minikube).
+- `kubectl` configured to connect to your cluster.
+
+### Deployment Steps
+
+1.  **Encode Your Secrets:**
+
+    The `kubernetes_manifest.yaml` file requires your secrets to be Base64 encoded. Encode your credentials using the following commands:
+
+    ```bash
+    echo -n 'your-real-easyvista-api-key' | base64
+    echo -n 'your-account-id' | base64
+    echo -n 'a-very-secret-api-key' | base64
+    ```
+
+2.  **Update the Manifest:**
+
+    Open `kubernetes_manifest.yaml` and replace the placeholder values in the `Secret` resource with your Base64-encoded credentials. You must also update the `EASYVISTA_URL` in the `ConfigMap` to point to your production EasyVista instance.
+
+3.  **Apply the Manifest:**
+
+    ```bash
+    kubectl apply -f kubernetes_manifest.yaml
+    ```
+
+4.  **Access the Service:**
+
+    The service will be exposed on port `30087` on your Kubernetes node. You can access it at `http://<your-node-ip>:30087`.
+
 ## API Reference
 
 The following tools are available:

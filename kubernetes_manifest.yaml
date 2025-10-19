@@ -1,0 +1,77 @@
+# kubernetes_manifest.yaml
+
+# --- Secret for sensitive credentials ---
+#
+# IMPORTANT: The values below are placeholders. Before applying this manifest,
+# you must replace them with your actual credentials, encoded in Base64.
+#
+# To encode your credentials, use the following command:
+# echo -n 'your-secret-value' | base64
+#
+apiVersion: v1
+kind: Secret
+metadata:
+  name: easyvista-secrets
+type: Opaque
+data:
+  EASYVISTA_API_KEY: eW91ci1yZWFsLWVhc3l2aXN0YS1hcGkta2V5 # Placeholder: your-real-easyvista-api-key
+  EASYVISTA_ACCOUNT_ID: eW91ci1hY2NvdW50LWlk # Placeholder: your-account-id
+  EASYVISTA_TOOL_API_KEY: YS12ZXJ5LXNlY3JldC1hcGkta2V5 # Placeholder: a-very-secret-api-key
+
+---
+
+# --- ConfigMap for non-sensitive configuration ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: easyvista-config
+data:
+  # For production, this must point to your real EasyVista instance URL.
+  EASYVISTA_URL: "https://your-company.easyvista.com"
+
+---
+
+# --- Deployment for the EasyVista Tool Service ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: easyvista-tool-deployment
+  labels:
+    app: easyvista-tool
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: easyvista-tool
+  template:
+    metadata:
+      labels:
+        app: easyvista-tool
+    spec:
+      containers:
+      - name: easyvista-tool
+        image: antuelle78/easyvista_tool:latest
+        ports:
+        - containerPort: 8004
+        envFrom:
+        - configMapRef:
+            name: easyvista-config
+        - secretRef:
+            name: easyvista-secrets
+
+---
+
+# --- NodePort Service to expose the EasyVista Tool ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: easyvista-tool-service
+spec:
+  type: NodePort
+  selector:
+    app: easyvista-tool
+  ports:
+    - protocol: TCP
+      port: 8004
+      targetPort: 8004
+      nodePort: 30087

@@ -1,0 +1,87 @@
+# generate_tool_schemas.py
+import json
+
+def get_tools_schema():
+    """
+    Generates the OpenAI-compatible function calling schema for the EasyVista tools.
+    """
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "create_ticket",
+                "description": "Create a new ticket in EasyVista.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string", "description": "The title of the ticket."},
+                        "description": {"type": "string", "description": "A detailed description of the ticket."},
+                        "category": {"type": "string", "description": "The category of the ticket (e.g., 'Incidents', 'Requests')."},
+                        "priority": {"type": "string", "description": "The priority of the ticket (e.g., 'High', 'Medium', 'Low')."},
+                    },
+                    "required": ["title", "description", "category", "priority"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_ticket",
+                "description": "Retrieve a single ticket by its RFC number.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "rfc_number": {"type": "string", "description": "The RFC number of the ticket to retrieve (e.g., 'RFC123')."},
+                    },
+                    "required": ["rfc_number"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_tickets",
+                "description": "List tickets, with optional filtering by status.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "status": {"type": "string", "description": "Filter tickets by status (e.g., 'Open', 'In Progress')."},
+                        "limit": {"type": "integer", "description": "The maximum number of tickets to return.", "default": 20},
+                    },
+                    "required": [],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "generate_report",
+                "description": "Generate a report of tickets in various formats.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "report_type": {
+                            "type": "string",
+                            "description": "The format of the report.",
+                            "enum": ["summary", "csv", "html"],
+                        },
+                        "filters": {
+                            "type": "object",
+                            "description": "Optional filters for the report (e.g., status, priority).",
+                            "properties": {
+                                "status": {"type": "string"},
+                                "priority": {"type": "string"},
+                                "group_id": {"type": "string"},
+                            }
+                        },
+                    },
+                    "required": ["report_type"],
+                },
+            },
+        },
+    ]
+    return tools
+
+if __name__ == "__main__":
+    schema = get_tools_schema()
+    print(json.dumps(schema, indent=2))

@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic[dotenv]<2
+httpx
+tenacity
+pytest
+pytest-asyncio
+respx
+tenacity

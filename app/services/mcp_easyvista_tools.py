@@ -4,19 +4,19 @@ from typing import Dict, List, Any
 import httpx
 from pydantic import BaseModel, Field
 from fastapi.responses import JSONResponse
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.models.rpc import RPCError, RPCException
 from app.models.reporting import TicketFilterArgs
-
-# ------------------------------------------------------------------
-# 1. Pydantic models for arguments (re-used by all helpers)
-# ------------------------------------------------------------------
+from app.core.config import settings
 
 class CreateTicketArgs(BaseModel):
     title: str = Field(..., description="Ticket title")
     description: str = Field(..., description="Ticket description")
     category: str = Field(..., description="Ticket category")
     priority: str = Field(..., description="Ticket priority")
+    support_team: str | None = Field(None, description="Support team")
+    assigned_to: str | None = Field(None, description="Assigned to")
 
 class UpdateTicketArgs(BaseModel):
     rfc_number: str = Field(..., description="RFC number of the ticket")
@@ -26,21 +26,11 @@ class CloseTicketArgs(BaseModel):
     rfc_number: str = Field(..., description="RFC number of the ticket")
     comment: str = Field(..., description="Closing comment")
 
-class ListTicketsArgs(BaseModel):
-    status: str | None = Field(None, description="Filter by ticket status")
-    limit: int = Field(20, description="Maximum number of tickets to return")
-
 class ReportArgs(BaseModel):
     report_type: str = Field(..., description="One of: summary, csv, html")
     filters: Dict[str, Any] | None = Field(
         None, description="Optional filters for the report"
     )
-
-# ------------------------------------------------------------------
-# 2. Utility: get the EasyVista base URL, API key & account ID
-# ------------------------------------------------------------------
-
-from app.core.config import settings
 
 def get_easyvista_config() -> Dict[str, str]:
     """
@@ -51,12 +41,6 @@ def get_easyvista_config() -> Dict[str, str]:
         "key": settings.EASYVISTA_API_KEY,
         "account": settings.EASYVISTA_ACCOUNT_ID,
     }
-
-# ------------------------------------------------------------------
-# 3. Core helpers (all async, using httpx for non-blocking I/O)
-# ------------------------------------------------------------------
-
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 async def _request(client: httpx.AsyncClient, method: str, url: str, **kwargs) -> Any:
@@ -80,6 +64,8 @@ async def create_ticket(client: httpx.AsyncClient, args: CreateTicketArgs) -> Di
         "description": args.description,
         "category": args.category,
         "priority": args.priority,
+        "support_team": args.support_team,
+        "assigned_to": args.assigned_to,
     }
     headers = {
         "Authorization": f"Bearer {cfg['key']}",
@@ -123,20 +109,32 @@ async def get_ticket(client: httpx.AsyncClient, rfc_number: str) -> Dict[str, An
     }
     return await _request(client, "GET", f"{cfg['url']}/api/v1/tickets/{rfc_number}", headers=headers)
 
+async def get_ticket_history(client: httpx.AsyncClient, rfc_number: str) -> List[Dict[str, Any]]:
+    cfg = get_easyvista_config()
+    headers = {
+        "Authorization": f"Bearer {cfg['key']}",
+        "Accept": "application/json",
+    }
+    return await _request(client, "GET", f"{cfg['url']}/api/v1/tickets/{rfc_number}/history", headers=headers)
+
+async def get_resolution_metrics(client: httpx.AsyncClient) -> Dict[str, float]:
+    cfg = get_easyvista_config()
+    headers = {
+        "Authorization": f"Bearer {cfg['key']}",
+        "Accept": "application/json",
+    }
+    return await _request(client, "GET", f"{cfg['url']}/api/v1/metrics/resolution", headers=headers)
+
 async def list_tickets(client: httpx.AsyncClient, filter_args: TicketFilterArgs) -> List[Dict[str, Any]]:
     cfg = get_easyvista_config()
     params = {"account_id": cfg["account"], "limit": filter_args.limit, "offset": filter_args.offset}
-    for key in ("group_id", "status", "priority"):
+    for key in ("group_id", "status", "priority", "assigned_to"):
         val = getattr(filter_args, key)
         if val:
             params[key] = val
     headers = {"Authorization": f"Bearer {cfg['key']}", "Accept": "application/json"}
     data = await _request(client, "GET", f"{cfg['url']}/api/v1/tickets", params=params, headers=headers)
     return data.get("tickets", [])
-
-# ------------------------------------------------------------------
-# 4. Reporting helpers
-# ------------------------------------------------------------------
 
 async def generate_report(client: httpx.AsyncClient, args: ReportArgs) -> str:
     filter_args = TicketFilterArgs(**(args.filters or {}))
@@ -150,10 +148,9 @@ async def generate_report(client: httpx.AsyncClient, args: ReportArgs) -> str:
         import csv
         from io import StringIO
         output = StringIO()
-        writer = csv.DictWriter(output, fieldnames=["rfc_number", "title", "status", "priority", "category"])
+        writer = csv.DictWriter(output, fieldnames=["rfc_number", "title", "status", "priority", "category", "assigned_to"])
         writer.writeheader()
-        for t in tickets:
-            writer.writerow({k: t.get(k, "") for k in writer.fieldnames})
+        writer.writerows(tickets)
         return output.getvalue()
 
     if args.report_type == "html":
@@ -161,10 +158,6 @@ async def generate_report(client: httpx.AsyncClient, args: ReportArgs) -> str:
         return f"<html><body><table border='1'><tr><th>RFC</th><th>Title</th><th>Status</th></tr>{rows}</table></body></html>"
 
     raise ValueError(f"Unsupported report type: {args.report_type}")
-
-# ------------------------------------------------------------------
-# 5. JSON-RPC dispatcher
-# ------------------------------------------------------------------
 
 async def dispatch(client: httpx.AsyncClient, method: str, args: Dict[str, Any]) -> Any:
     if method == "create_ticket":
@@ -175,6 +168,8 @@ async def dispatch(client: httpx.AsyncClient, method: str, args: Dict[str, Any])
         return await close_ticket(client, CloseTicketArgs(**args))
     if method == "get_ticket":
         return await get_ticket(client, args["rfc_number"])
+    if method == "get_ticket_history":
+        return await get_ticket_history(client, args["rfc_number"])
     if method == "list_tickets":
         return await list_tickets(client, TicketFilterArgs(**args))
     if method == "get_tickets_by_group":
@@ -185,5 +180,7 @@ async def dispatch(client: httpx.AsyncClient, method: str, args: Dict[str, Any])
         return await list_tickets(client, TicketFilterArgs(priority=args["priority"]))
     if method == "generate_report":
         return await generate_report(client, ReportArgs(**args))
+    if method == "get_resolution_metrics":
+        return await get_resolution_metrics(client)
     
     raise ValueError(f"Unknown method: {method}")

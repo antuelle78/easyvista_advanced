@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "EasyVista Tickets": {
+      "url": "http://localhost:8004/api/v1/mcp",
+      "headers": {
+        "X-API-KEY": "a-very-secret-api-key"
+      }
+    }
+  }
+}

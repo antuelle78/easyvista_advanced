@@ -104,28 +104,17 @@ class Tools:
     def get_ticket_history(self, rfc_number: str) -> dict:
         """
         Retrieves the status change history for a specific ticket.
+
+        :param rfc_number: The RFC number of the ticket to retrieve the history for.
+        :return: A list of status changes with timestamps.
         """
-        try:
-            response = self.client.get(f"{self.base_url}/tickets/{rfc_number}/history")
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            return {"status": "error", "details": f"HTTP Error: {e.response.status_code} - {e.response.text}"}
-        except httpx.RequestError as e:
-            return {"status": "error", "details": f"Request Failed: {e}"}
+        return self._make_rpc_call("get_ticket_history", {"rfc_number": rfc_number})
 
     def get_resolution_metrics(self) -> dict:
         """
         Retrieves average ticket resolution times, aggregated by support team.
         """
-        try:
-            response = self.client.get(f"{self.base_url}/metrics/resolution")
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            return {"status": "error", "details": f"HTTP Error: {e.response.status_code} - {e.response.text}"}
-        except httpx.RequestError as e:
-            return {"status": "error", "details": f"Request Failed: {e}"}
+        return self._make_rpc_call("get_resolution_metrics", {})
 
     def get_tickets_by_group(self, group_id: str) -> dict:
         """

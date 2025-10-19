@@ -77,13 +77,40 @@ You must include your API key in the `X-API-KEY` header for all requests.
 curl -X POST http://localhost:8004/api/v1/mcp \
      -H "Content-Type: application/json" \
      -H "X-API-KEY: a-very-secret-api-key" \
-     -d 
+     -d '{'\
            "jsonrpc": "2.0",
            "method": "list_tickets",
            "params": {"status": "Open"},
            "id": 1
-         }
+         }'
 ```
+
+## Production Configuration (Connecting to a Real EasyVista Instance)
+
+To connect the service to your actual EasyVista instance, you need to update the `.env` file with your production credentials:
+
+1.  **`EASYVISTA_URL`**: Change this to your organization's EasyVista API endpoint.
+    ```
+    EASYVISTA_URL=https://your-company.easyvista.com
+    ```
+
+2.  **`EASYVISTA_API_KEY`**: Use a valid API key (Bearer Token) generated from your EasyVista account.
+    ```
+    EASYVISTA_API_KEY=your-real-easyvista-api-key
+    ```
+
+3.  **`EASYVISTA_ACCOUNT_ID`**: Set this to your EasyVista Account ID.
+    ```
+    EASYVISTA_ACCOUNT_ID=your-account-id
+    ```
+
+After updating the `.env` file, restart the services:
+
+```bash
+docker compose up -d --build
+```
+
+For a production deployment, you can also remove or comment out the `mock_api` service from the `docker-compose.yml` file as it will no longer be needed.
 
 ## API Reference
 

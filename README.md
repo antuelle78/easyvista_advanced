@@ -91,14 +91,15 @@ The following tools are available:
 
 | Method | Description | Parameters |
 | :--- | :--- | :--- |
-| `create_ticket` | Creates a new ticket. | `title`, `description`, `category`, `priority`, `support_team` (optional) |
+| `create_ticket` | Creates a new ticket. | `title`, `description`, `category`, `priority`, `support_team` (optional), `assigned_to` (optional) |
+| `assign_ticket` | Assigns a ticket to a support person. | `rfc_number`, `assigned_to` |
 | `get_ticket` | Retrieves a single ticket by its RFC number. | `rfc_number` |
 | `get_ticket_history` | Retrieves the status history for a ticket. | `rfc_number` |
-| `list_tickets` | Lists tickets, with optional filtering. | `status`, `priority`, `group_id`, `limit`, `offset` |
+| `list_tickets` | Lists tickets, with optional filtering. | `status`, `priority`, `group_id`, `assigned_to`, `limit`, `offset` |
 | `get_tickets_by_group` | Retrieves tickets for a specific group. | `group_id` |
 | `get_tickets_by_status` | Retrieves tickets with a specific status. | `status` |
 | `get_tickets_by_priority` | Retrieves tickets with a specific priority. | `priority` |
-| `generate_report` | Generates a report of tickets. | `report_type` (`summary`, `csv`, `html`), `filters` (`status`, `priority`, `group_id`) |
+| `generate_report` | Generates a report of tickets. | `report_type` (`summary`, `csv`, `html`), `filters` (`status`, `priority`, `group_id`, `assigned_to`) |
 | `get_resolution_metrics` | Retrieves average resolution times by team. | (None) |
 
 ## Running Tests

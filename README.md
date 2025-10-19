@@ -35,7 +35,7 @@ The project follows a clean, layered architecture that separates concerns:
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repo-url>
+    git clone git@github.com:antuelle78/easyvista_advanced.git
     cd easyvista_advanced
     ```
 

@@ -150,7 +150,8 @@ async def generate_report(client: httpx.AsyncClient, args: ReportArgs) -> str:
         output = StringIO()
         writer = csv.DictWriter(output, fieldnames=["rfc_number", "title", "status", "priority", "category", "assigned_to"])
         writer.writeheader()
-        writer.writerows(tickets)
+        for t in tickets:
+            writer.writerow({k: t.get(k, "") for k in writer.fieldnames})
         return output.getvalue()
 
     if args.report_type == "html":
